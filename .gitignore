@@ -4,7 +4,7 @@
 # PyInstaller
 dist/
 build/
-*.spec
+# Note: ArctisBattery.spec is intentionally tracked — build.bat builds from it.
 
 # Python
 __pycache__/
