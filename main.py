@@ -1,7 +1,6 @@
 """Arctis Nova 5 Wireless — system tray battery monitor."""
 
 import threading
-import time
 import hid
 from PIL import Image, ImageDraw, ImageFont
 import pystray
@@ -10,7 +9,7 @@ from pystray import MenuItem
 VENDOR_ID      = 0x1038   # SteelSeries
 PRODUCT_ID     = 0x2232   # Arctis Nova 5 wireless dongle
 POLL_INTERVAL  = 60        # seconds between polls
-_SS_USAGE_PAGE = 0xFF43   # SteelSeries proprietary HID command interface
+_SS_USAGE_PAGE = 0xFFC0   # SteelSeries proprietary HID command interface
 
 
 # ---------------------------------------------------------------------------
@@ -37,15 +36,14 @@ def read_battery():
         dev.open_path(path)
         try:
             # 64-byte output report: report-ID 0x00, command 0xB0, zero padding
-            dev.write([0x00, 0xB0] + [0x00] * 62)
-            resp = dev.read(64, timeout_ms=3000)
+            dev.write(bytes([0x00, 0xB0] + [0x00] * 62))
+            resp = dev.read(64, 3000)
             if not resp:
                 return None, None
-            # Response layout: [0xB0, battery_pct, charging_flag, ...]
-            # hidapi may or may not prepend a report-ID byte; check both offsets.
-            for offset in (0, 1):
-                if len(resp) > offset + 2 and resp[offset] == 0xB0:
-                    return min(resp[offset + 1], 100), bool(resp[offset + 2])
+            # Response layout: [0xB0, ?, ?, battery_pct, charging_status, ?, ...]
+            # charging_status: 0x01 = charging, 0x03 = on battery
+            if len(resp) >= 5 and resp[0] == 0xB0:
+                return min(resp[3], 100), resp[4] != 0x03
         finally:
             dev.close()
     except Exception:
@@ -128,13 +126,6 @@ class ArctisTray:
             self._icon.title = self._tooltip()
             self._icon.update_menu()
 
-    # --- background poll ---
-
-    def _poll(self):
-        while not self._stop.wait(POLL_INTERVAL):
-            self._refresh()
-            self._update()
-
     # --- menu callbacks ---
 
     def _on_refresh(self, icon, item):
@@ -173,8 +164,13 @@ class ArctisTray:
             self._tooltip(),
             menu,
         )
-        threading.Thread(target=self._poll, daemon=True).start()
-        self._icon.run()
+        self._icon.run_detached()
+        try:
+            while not self._stop.wait(POLL_INTERVAL):
+                self._refresh()
+                self._update()
+        finally:
+            self._icon.stop()
 
 
 if __name__ == '__main__':
