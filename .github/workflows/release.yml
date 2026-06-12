@@ -1,0 +1,73 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute next version
+        id: ver
+        shell: pwsh
+        run: |
+          $latest = git tag --sort=-version:refname | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' } | Select-Object -First 1
+          if (-not $latest) {
+            $next = "0.0.1"
+          } else {
+            $parts = ($latest -replace '^v','').Split('.')
+            $next = "$($parts[0]).$($parts[1]).$([int]$parts[2] + 1)"
+          }
+          "version=$next" | Out-File -Append $env:GITHUB_OUTPUT
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Build executable
+        run: uv run pyinstaller ArctisBattery.spec --noconfirm
+
+      - name: Compute SHA-256
+        id: sha
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist\ArctisBattery.exe -Algorithm SHA256).Hash
+          "sha256=$hash" | Out-File -Append $env:GITHUB_OUTPUT
+          "$hash  ArctisBattery.exe" | Out-File -Encoding utf8 dist\ArctisBattery.exe.sha256
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: ArctisBattery v${{ steps.ver.outputs.version }}
+          body: |
+            ## ArctisBattery v${{ steps.ver.outputs.version }}
+
+            Built from commit `${{ github.sha }}`
+
+            ### Artifact verification
+            | File | SHA-256 |
+            |------|---------|
+            | `ArctisBattery.exe` | `${{ steps.sha.outputs.sha256 }}` |
+
+            Download `ArctisBattery.exe.sha256` and run:
+            ```powershell
+            (Get-FileHash ArctisBattery.exe -Algorithm SHA256).Hash
+            ```
+          files: |
+            dist/ArctisBattery.exe
+            dist/ArctisBattery.exe.sha256
+          make_latest: true
