@@ -1,0 +1,12 @@
+# uv
+.venv/
+
+# PyInstaller
+dist/
+build/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+.claude

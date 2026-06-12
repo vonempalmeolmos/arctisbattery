@@ -1,0 +1,18 @@
+[project]
+name = "arctis-battery"
+version = "0.1.0"
+description = "Windows system tray battery monitor for SteelSeries Arctis Nova 5"
+requires-python = ">=3.11"
+dependencies = [
+    "hid",
+    "pystray",
+    "Pillow",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller",
+]
+
+[tool.uv]
+package = false
