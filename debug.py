@@ -1,12 +1,11 @@
 """Run with: uv run python debug.py"""
 import hid
 
-VENDOR_ID  = 0x1038
-PRODUCT_ID = 0x2232
+VENDOR_ID = 0x1038
 
-devices = hid.enumerate(VENDOR_ID, PRODUCT_ID)
+devices = hid.enumerate(VENDOR_ID)
 if not devices:
-    print("No Arctis Nova 5 dongle found. Plug it in and try again.")
+    print("No SteelSeries Arctis headset found. Plug in the USB dongle and try again.")
 else:
     print(f"Found {len(devices)} HID interface(s):\n")
     for i, d in enumerate(devices):
