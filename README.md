@@ -2,7 +2,7 @@
 
 A minimal Windows system tray app that displays the battery level of a **SteelSeries Arctis Nova 5 Wireless** headset — no SteelSeries GG required.
 
-The tray icon shows the current charge percentage and changes color based on level (green → orange → red). A tooltip and right-click menu show the exact percentage and charging status. Battery is polled every 60 seconds, with a manual Refresh option.
+The tray icon shows the current charge percentage and changes color based on level (green → orange → red). A tooltip and right-click menu show the exact percentage and charging status. Battery is polled every 60 seconds by default (configurable via command line), with a manual Refresh option.
 
 ## Requirements
 
@@ -21,6 +21,16 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```powershell
 uv sync
 uv run python main.py
+```
+
+You can customize the refresh interval (in seconds) with the `--refresh-interval` or `-r` flag:
+
+```powershell
+# Refresh every 30 seconds
+uv run python main.py --refresh-interval 30
+
+# Or using the short form
+uv run python main.py -r 120
 ```
 
 ## Build a standalone .exe

@@ -1,5 +1,6 @@
 """Arctis Nova 5 Wireless — system tray battery monitor."""
 
+import argparse
 import threading
 import hid
 from PIL import Image, ImageDraw, ImageFont
@@ -8,7 +9,7 @@ from pystray import MenuItem
 
 VENDOR_ID      = 0x1038   # SteelSeries
 PRODUCT_ID     = 0x2232   # Arctis Nova 5 wireless dongle
-POLL_INTERVAL  = 60        # seconds between polls
+DEFAULT_POLL_INTERVAL = 60  # Default seconds between polls
 _SS_USAGE_PAGE = 0xFFC0   # SteelSeries proprietary HID command interface
 
 
@@ -96,15 +97,27 @@ def _make_icon(battery, charging):
 
 
 # ---------------------------------------------------------------------------
+# Command line argument parsing
+# ---------------------------------------------------------------------------
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Arctis Nova 5 Wireless Battery Monitor')
+    parser.add_argument('--refresh-interval', '-r', type=int, default=DEFAULT_POLL_INTERVAL,
+                        help=f'Seconds between battery level refreshes (default: {DEFAULT_POLL_INTERVAL})')
+    return parser.parse_args()
+
+
+# ---------------------------------------------------------------------------
 # Tray application
 # ---------------------------------------------------------------------------
 
 class ArctisTray:
-    def __init__(self):
+    def __init__(self, poll_interval=DEFAULT_POLL_INTERVAL):
         self.battery  = None
         self.charging = False
         self._icon    = None
         self._stop    = threading.Event()
+        self._poll_interval = poll_interval
         self._refresh()
 
     # --- state ---
@@ -166,7 +179,7 @@ class ArctisTray:
         )
         self._icon.run_detached()
         try:
-            while not self._stop.wait(POLL_INTERVAL):
+            while not self._stop.wait(self._poll_interval):
                 self._refresh()
                 self._update()
         finally:
@@ -174,4 +187,5 @@ class ArctisTray:
 
 
 if __name__ == '__main__':
-    ArctisTray().run()
+    args = parse_arguments()
+    ArctisTray(poll_interval=args.refresh_interval).run()
